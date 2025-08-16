@@ -137,7 +137,8 @@ if ($os === 'macos') {
 }
 
 echo "  3. If database setup is needed, run: php setup.php\n";
-echo "  4. Login with admin credentials: admin / admin123\n";
+echo "  4. If routing doesn't work, run: php fix_url.php\n";
+echo "  5. Login with admin credentials: admin / admin123\n";
 
 echo "\n✨ Deployment check completed!\n";
 ?>
