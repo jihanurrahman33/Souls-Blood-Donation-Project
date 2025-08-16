@@ -200,13 +200,29 @@ function createConfig() {
     
     // Determine the appropriate URL based on OS and common setups
     $appUrl = "http://localhost/";
-    if ($os === 'macos') {
-        // For XAMPP on macOS, typically uses port 80
-        $appUrl = "http://localhost/";
-    } elseif ($os === 'windows') {
-        // For XAMPP on Windows, typically uses port 80
+    
+    // Auto-detect the base URL from the current request
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $port = $_SERVER['SERVER_PORT'] ?? 80;
+    
+    // Get the current script path to determine the base directory
+    $scriptPath = $_SERVER['SCRIPT_NAME'] ?? '';
+    $basePath = dirname(dirname($scriptPath)); // Go up two levels from setup/setup.php
+    
+    // Build the base URL
+    if ($port == 80 || $port == 443) {
+        $appUrl = $protocol . "://" . $host . $basePath . "/";
+    } else {
+        $appUrl = $protocol . "://" . $host . ":" . $port . $basePath . "/";
+    }
+    
+    // Ensure we have a valid URL
+    if ($appUrl === "http://localhost//" || $appUrl === "https://localhost//") {
         $appUrl = "http://localhost/";
     }
+    
+    echo "📍 Detected Application URL: $appUrl\n";
     
     $configContent = '<?php
 // Database Configuration

@@ -219,6 +219,12 @@ The application provides RESTful API endpoints:
    - Ensure all PHP extensions are installed
    - Check error logs in `logs/` directory
 
+5. **Routing Not Working (Links Don't Work)**
+   - This happens when APP_URL is incorrect after cloning
+   - Run `php fix_url.php` to automatically fix the URL configuration
+   - Or manually update `APP_URL` in `config/config.php` to match your setup
+   - Example: If your project is at `http://localhost/souls/`, set `APP_URL` to `"http://localhost/souls/"`
+
 ### Platform-Specific Issues
 
 #### macOS

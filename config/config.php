@@ -20,7 +20,7 @@ define("SMTP_FROM_NAME", "Souls");
 
 // Security
 define("HASH_COST", 12); // Password hashing cost (higher = more secure but slower)
-define("CSRF_TOKEN_SECRET", "2997df705a6a17fccefce1f82120e709a8236220ae80ea66639ddda06c63b72f");
+define("CSRF_TOKEN_SECRET", "12358392af6bcd1a2427f7e31e585c9ea5eb423845a5e70b4ab5f41c0c0712ec");
 
 // Error Reporting (set to 0 for production)
 error_reporting(E_ALL);

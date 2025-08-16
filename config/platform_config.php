@@ -64,16 +64,28 @@ class PlatformConfig {
      * Get application URL based on platform
      */
     public static function getAppUrl() {
-        $os = self::detectOS();
-        
-        // Check if running on a specific port
+        // Auto-detect the base URL from the current request
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $port = $_SERVER['SERVER_PORT'] ?? 80;
         
-        if ($port == 80) {
-            return "http://localhost/";
+        // Get the current script path to determine the base directory
+        $scriptPath = $_SERVER['SCRIPT_NAME'] ?? '';
+        $basePath = dirname(dirname($scriptPath)); // Go up two levels from setup/deploy.php
+        
+        // Build the base URL
+        if ($port == 80 || $port == 443) {
+            $appUrl = $protocol . "://" . $host . $basePath . "/";
         } else {
-            return "http://localhost:{$port}/";
+            $appUrl = $protocol . "://" . $host . ":" . $port . $basePath . "/";
         }
+        
+        // Ensure we have a valid URL
+        if ($appUrl === "http://localhost//" || $appUrl === "https://localhost//") {
+            $appUrl = "http://localhost/";
+        }
+        
+        return $appUrl;
     }
     
     /**
