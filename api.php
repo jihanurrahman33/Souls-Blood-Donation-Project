@@ -1,5 +1,19 @@
 <?php
 session_start();
+
+// Check if configuration files exist
+if (!file_exists('config/config.php') || !file_exists('config/database.php')) {
+    header('Content-Type: application/json');
+    http_response_code(503);
+    echo json_encode([
+        'error' => 'Configuration files missing',
+        'message' => 'The application needs to be set up first. Run php setup.php to configure the application.',
+        'setup_required' => true
+    ]);
+    exit;
+}
+
+// Load configuration files
 require_once 'config/config.php';
 require_once 'config/database.php';
 
@@ -19,6 +33,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Parse the API URL
 $request = $_SERVER['REQUEST_URI'];
+
+// Remove the /souls/ prefix if present (for XAMPP setup)
+$request = preg_replace('/^\/souls/', '', $request);
 
 // Remove the base path and api.php from request
 $request = str_replace('/api.php', '', $request);

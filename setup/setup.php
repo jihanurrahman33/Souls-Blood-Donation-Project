@@ -2,16 +2,62 @@
 /**
  * Souls Blood Donation Website - Complete Setup Script
  * This script handles all setup tasks automatically
+ * Compatible with macOS, Windows, and Linux
  */
-
-// Include configuration
-require_once 'config/config.php';
 
 // Start output buffering
 ob_start();
 
 echo "🚀 Souls - Complete Setup\n";
 echo "========================\n\n";
+
+// Detect operating system and set appropriate configurations
+function detectOS() {
+    $os = strtolower(PHP_OS);
+    if (strpos($os, 'darwin') !== false) {
+        return 'macos';
+    } elseif (strpos($os, 'win') !== false) {
+        return 'windows';
+    } else {
+        return 'linux';
+    }
+}
+
+// Get database configuration based on OS
+function getDatabaseConfig() {
+    $os = detectOS();
+    
+    switch ($os) {
+        case 'macos':
+            // macOS with XAMPP typically uses these settings
+            return [
+                'host' => 'localhost',
+                'name' => 'blood_donation',
+                'user' => 'root',
+                'pass' => '', // XAMPP on macOS usually has no password
+                'port' => 3306,
+                'socket' => '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock'
+            ];
+        case 'windows':
+            return [
+                'host' => 'localhost',
+                'name' => 'blood_donation',
+                'user' => 'root',
+                'pass' => '', // XAMPP on Windows usually has no password
+                'port' => 3306,
+                'socket' => null
+            ];
+        default:
+            return [
+                'host' => 'localhost',
+                'name' => 'blood_donation',
+                'user' => 'root',
+                'pass' => '',
+                'port' => 3306,
+                'socket' => null
+            ];
+    }
+}
 
 // Check system requirements
 function checkRequirements() {
@@ -43,17 +89,68 @@ function checkRequirements() {
     return true;
 }
 
+// Check if MySQL/MariaDB is running
+function checkDatabaseServer() {
+    echo "🔍 Checking Database Server...\n";
+    
+    $config = getDatabaseConfig();
+    $os = detectOS();
+    
+    // Try to connect to MySQL without specifying a database
+    try {
+        if ($config['socket']) {
+            $dsn = "mysql:unix_socket={$config['socket']}";
+        } else {
+            $dsn = "mysql:host={$config['host']};port={$config['port']}";
+        }
+        $pdo = new PDO($dsn, $config['user'], $config['pass']);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Test connection
+        $pdo->query("SELECT 1");
+        echo "✅ Database server is running!\n\n";
+        return true;
+    } catch (PDOException $e) {
+        echo "❌ Database server connection failed: " . $e->getMessage() . "\n";
+        
+        if ($os === 'macos') {
+            echo "\n💡 For macOS with XAMPP:\n";
+            echo "   1. Make sure XAMPP is installed and running\n";
+            echo "   2. Start MySQL from XAMPP Control Panel\n";
+            echo "   3. If using a different MySQL installation, check your configuration\n";
+        } elseif ($os === 'windows') {
+            echo "\n💡 For Windows with XAMPP:\n";
+            echo "   1. Make sure XAMPP is installed and running\n";
+            echo "   2. Start MySQL from XAMPP Control Panel\n";
+        } else {
+            echo "\n💡 For Linux:\n";
+            echo "   1. Make sure MySQL/MariaDB is installed and running\n";
+            echo "   2. Check if the service is started: sudo systemctl start mysql\n";
+        }
+        
+        echo "\n";
+        return false;
+    }
+}
+
 // Create database
 function createDatabase() {
     echo "🗄️  Creating Database...\n";
     
+    $config = getDatabaseConfig();
+    
     try {
-        $pdo = new PDO("mysql:host=" . DB_HOST, DB_USER, DB_PASS);
+        if ($config['socket']) {
+            $dsn = "mysql:unix_socket={$config['socket']}";
+        } else {
+            $dsn = "mysql:host={$config['host']};port={$config['port']}";
+        }
+        $pdo = new PDO($dsn, $config['user'], $config['pass']);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
         // Create database if it doesn't exist
-        $pdo->exec("CREATE DATABASE IF NOT EXISTS " . DB_NAME . " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-        echo "✅ Database '" . DB_NAME . "' created successfully!\n\n";
+        $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$config['name']}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+        echo "✅ Database '{$config['name']}' created successfully!\n\n";
         
         return true;
     } catch (PDOException $e) {
@@ -66,15 +163,27 @@ function createDatabase() {
 function createTables() {
     echo "📊 Creating Tables...\n";
     
+    $config = getDatabaseConfig();
+    
     try {
-        $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
+        if ($config['socket']) {
+            $dsn = "mysql:unix_socket={$config['socket']};dbname={$config['name']}";
+        } else {
+            $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['name']}";
+        }
+        $pdo = new PDO($dsn, $config['user'], $config['pass']);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
         // Read and execute SQL file
-        $sql = file_get_contents('setup_database.sql');
-        $pdo->exec($sql);
+        if (file_exists('setup_database.sql')) {
+            $sql = file_get_contents('setup_database.sql');
+            $pdo->exec($sql);
+            echo "✅ All tables created successfully!\n\n";
+        } else {
+            echo "❌ setup_database.sql file not found!\n";
+            return false;
+        }
         
-        echo "✅ All tables created successfully!\n\n";
         return true;
     } catch (PDOException $e) {
         echo "❌ Table creation failed: " . $e->getMessage() . "\n";
@@ -86,16 +195,29 @@ function createTables() {
 function createConfig() {
     echo "⚙️  Creating Configuration...\n";
     
+    $config = getDatabaseConfig();
+    $os = detectOS();
+    
+    // Determine the appropriate URL based on OS and common setups
+    $appUrl = "http://localhost/";
+    if ($os === 'macos') {
+        // For XAMPP on macOS, typically uses port 80
+        $appUrl = "http://localhost/";
+    } elseif ($os === 'windows') {
+        // For XAMPP on Windows, typically uses port 80
+        $appUrl = "http://localhost/";
+    }
+    
     $configContent = '<?php
 // Database Configuration
-define("DB_HOST", "localhost");
-define("DB_NAME", "blood_donation");
-define("DB_USER", "root");
-define("DB_PASS", "");
+define("DB_HOST", "' . $config['host'] . '");
+define("DB_NAME", "' . $config['name'] . '");
+define("DB_USER", "' . $config['user'] . '");
+define("DB_PASS", "' . $config['pass'] . '");
 
 // Application Configuration
 define("APP_NAME", "Souls");
-define("APP_URL", "http://localhost:8000/");
+define("APP_URL", "' . $appUrl . '");
 define("APP_VERSION", "2.0.0");
 
 // Email Configuration (for notifications)
@@ -107,6 +229,7 @@ define("SMTP_FROM_EMAIL", "noreply@blooddonation.com");
 define("SMTP_FROM_NAME", "Souls");
 
 // Security
+define("HASH_COST", 12); // Password hashing cost (higher = more secure but slower)
 define("CSRF_TOKEN_SECRET", "' . bin2hex(random_bytes(32)) . '");
 
 // Error Reporting (set to 0 for production)
@@ -164,7 +287,12 @@ function isAdmin() {
 }
 ?>';
     
-    if (file_put_contents('config/config.php', $configContent)) {
+    // Ensure config directory exists
+    if (!is_dir('config')) {
+        mkdir('config', 0755, true);
+    }
+    
+    if (file_put_contents('../config/config.php', $configContent)) {
         echo "✅ Configuration file created successfully!\n\n";
         return true;
     } else {
@@ -177,8 +305,15 @@ function isAdmin() {
 function insertSampleData() {
     echo "📝 Inserting Sample Data...\n";
     
+    $config = getDatabaseConfig();
+    
     try {
-        $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
+        if ($config['socket']) {
+            $dsn = "mysql:unix_socket={$config['socket']};dbname={$config['name']}";
+        } else {
+            $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['name']}";
+        }
+        $pdo = new PDO($dsn, $config['user'], $config['pass']);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
         // Check if sample data already exists
@@ -189,12 +324,12 @@ function insertSampleData() {
         }
         
         // Insert sample users
-        $stmt = $pdo->prepare("INSERT INTO users (username, email, password, first_name, last_name, blood_group, phone, location, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt = $pdo->prepare("INSERT INTO users (username, email, password, first_name, last_name, blood_group, phone, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
         $users = [
-            ['john_doe', 'john@example.com', password_hash('password123', PASSWORD_DEFAULT), 'John', 'Doe', 'A+', '1234567890', 'New York', 'user'],
-            ['jane_smith', 'jane@example.com', password_hash('password123', PASSWORD_DEFAULT), 'Jane', 'Smith', 'O-', '0987654321', 'Los Angeles', 'user'],
-            ['mike_wilson', 'mike@example.com', password_hash('password123', PASSWORD_DEFAULT), 'Mike', 'Wilson', 'B+', '1122334455', 'Chicago', 'user']
+            ['john_doe', 'john@example.com', password_hash('password123', PASSWORD_DEFAULT), 'John', 'Doe', 'A+', '1234567890', 'donor'],
+            ['jane_smith', 'jane@example.com', password_hash('password123', PASSWORD_DEFAULT), 'Jane', 'Smith', 'O-', '0987654321', 'donor'],
+            ['mike_wilson', 'mike@example.com', password_hash('password123', PASSWORD_DEFAULT), 'Mike', 'Wilson', 'B+', '1122334455', 'donor']
         ];
         
         foreach ($users as $user) {
@@ -207,12 +342,12 @@ function insertSampleData() {
         $mikeId = $johnId + 2;
         
         // Insert sample blood requests
-        $stmt = $pdo->prepare("INSERT INTO blood_requests (user_id, requester_name, blood_group, location, urgency, contact_info, request_date, required_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?, 'pending', NOW())");
+        $stmt = $pdo->prepare("INSERT INTO blood_requests (user_id, requester_name, blood_group, location, urgency, contact_info, request_date, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NOW())");
         
         $requests = [
             [$johnId, 'John Doe', 'A+', 'New York', 'critical', 'john@example.com', date('Y-m-d', strtotime('+3 days'))],
-            [null, 'Anonymous', 'O-', 'Los Angeles', 'urgent', 'emergency@hospital.com', date('Y-m-d', strtotime('+1 day'))],
-            [$mikeId, 'Mike Wilson', 'B+', 'Chicago', 'normal', 'mike@example.com', date('Y-m-d', strtotime('+5 days'))]
+            [null, 'Anonymous', 'O-', 'Los Angeles', 'high', 'emergency@hospital.com', date('Y-m-d', strtotime('+1 day'))],
+            [$mikeId, 'Mike Wilson', 'B+', 'Chicago', 'medium', 'mike@example.com', date('Y-m-d', strtotime('+5 days'))]
         ];
         
         foreach ($requests as $request) {
@@ -220,11 +355,11 @@ function insertSampleData() {
         }
         
         // Insert sample donations
-        $stmt = $pdo->prepare("INSERT INTO donations (user_id, donor_name, blood_group, location, donation_date, contact_info, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+        $stmt = $pdo->prepare("INSERT INTO donations (user_id, donor_name, blood_group, location, donation_date, status, created_at) VALUES (?, ?, ?, ?, ?, 'completed', NOW())");
         
         $donations = [
-            [$janeId, 'Jane Smith', 'O-', 'Los Angeles', date('Y-m-d', strtotime('-2 days')), 'jane@example.com'],
-            [$mikeId, 'Mike Wilson', 'B+', 'Chicago', date('Y-m-d', strtotime('-1 day')), 'mike@example.com']
+            [$janeId, 'Jane Smith', 'O-', 'Los Angeles', date('Y-m-d', strtotime('-2 days'))],
+            [$mikeId, 'Mike Wilson', 'B+', 'Chicago', date('Y-m-d', strtotime('-1 day'))]
         ];
         
         foreach ($donations as $donation) {
@@ -256,8 +391,15 @@ function insertSampleData() {
 function createAdminUser() {
     echo "👑 Creating Admin User...\n";
     
+    $config = getDatabaseConfig();
+    
     try {
-        $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
+        if ($config['socket']) {
+            $dsn = "mysql:unix_socket={$config['socket']};dbname={$config['name']}";
+        } else {
+            $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['name']}";
+        }
+        $pdo = new PDO($dsn, $config['user'], $config['pass']);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
         // Check if admin already exists
@@ -268,7 +410,7 @@ function createAdminUser() {
             return true;
         }
         
-        $stmt = $pdo->prepare("INSERT INTO users (username, email, password, first_name, last_name, blood_group, phone, location, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $stmt = $pdo->prepare("INSERT INTO users (username, email, password, first_name, last_name, blood_group, phone, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         $stmt->execute([
             'admin',
             'admin@blooddonation.com',
@@ -277,7 +419,6 @@ function createAdminUser() {
             'User',
             'O+',
             '5551234567',
-            'System',
             'admin'
         ]);
         
@@ -301,18 +442,21 @@ function createDirectories() {
         'temp'
     ];
     
+    $success = true;
     foreach ($directories as $dir) {
         if (!is_dir($dir)) {
             if (mkdir($dir, 0755, true)) {
                 echo "✅ Created directory: $dir\n";
             } else {
                 echo "❌ Failed to create directory: $dir\n";
+                $success = false;
             }
         } else {
             echo "ℹ️  Directory already exists: $dir\n";
         }
     }
     echo "\n";
+    return $success;
 }
 
 // Create .htaccess
@@ -400,8 +544,15 @@ echo json_encode([
 function testDatabaseConnection() {
     echo "🔍 Testing Database Connection...\n";
     
+    $config = getDatabaseConfig();
+    
     try {
-        $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
+        if ($config['socket']) {
+            $dsn = "mysql:unix_socket={$config['socket']};dbname={$config['name']}";
+        } else {
+            $dsn = "mysql:host={$config['host']};port={$config['port']};dbname={$config['name']}";
+        }
+        $pdo = new PDO($dsn, $config['user'], $config['pass']);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
         // Test a simple query
@@ -419,10 +570,9 @@ function testDatabaseConnection() {
 
 // Main setup process
 function main() {
-    global $success;
-    
     $steps = [
         'checkRequirements' => 'System Requirements Check',
+        'checkDatabaseServer' => 'Database Server Check',
         'createDatabase' => 'Database Creation',
         'createTables' => 'Table Creation',
         'createConfig' => 'Configuration Setup',
@@ -449,9 +599,18 @@ function main() {
 if (main()) {
     echo "🎉 Setup completed successfully!\n\n";
     echo "✨ Thank you for using Souls!\n\n";
+    
+    $os = detectOS();
     echo "🚀 Next Steps:\n";
-    echo "   1. Start your web server (e.g., php -S localhost:8000)\n";
-    echo "   2. Open http://localhost:8000 in your browser\n";
+    
+    if ($os === 'macos') {
+        echo "   1. Make sure XAMPP is running (Apache and MySQL)\n";
+        echo "   2. Open http://localhost/souls in your browser\n";
+    } else {
+        echo "   1. Start your web server (e.g., php -S localhost:8000)\n";
+        echo "   2. Open http://localhost:8000 in your browser\n";
+    }
+    
     echo "   3. Login with admin credentials:\n";
     echo "      Username: admin\n";
     echo "      Password: admin123\n\n";

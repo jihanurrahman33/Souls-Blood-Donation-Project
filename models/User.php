@@ -11,8 +11,8 @@ class User {
     public function create($data) {
         $hashedPassword = password_hash($data['password'], PASSWORD_BCRYPT, ['cost' => HASH_COST]);
         
-        $sql = "INSERT INTO users (username, email, password, first_name, last_name, phone, blood_group, location, role) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO users (username, email, password, first_name, last_name, phone, blood_group, role) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         
         return $this->db->query($sql, [
             $data['username'],
@@ -22,8 +22,7 @@ class User {
             $data['last_name'],
             $data['phone'] ?? null,
             $data['blood_group'] ?? null,
-            $data['location'] ?? null,
-            $data['role'] ?? 'user'
+            $data['role'] ?? 'donor'
         ]);
     }
     

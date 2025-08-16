@@ -1,5 +1,6 @@
 <?php
 require_once "config.php";
+require_once "platform_config.php";
 
 class Database {
     private static $instance = null;
@@ -7,8 +8,11 @@ class Database {
     
     private function __construct() {
         try {
+            // Use platform-specific configuration
+            $dsn = PlatformConfig::getDatabaseDSN(DB_NAME);
+            
             $this->pdo = new PDO(
-                "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+                $dsn,
                 DB_USER,
                 DB_PASS,
                 [
@@ -55,3 +59,4 @@ class Database {
         return $this->pdo->lastInsertId();
     }
 }
+?>

@@ -42,7 +42,7 @@
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                                                <div class="col-md-6 mb-3">
                             <label for="location" class="form-label">
                                 <i class="fas fa-map-marker-alt me-1"></i>Location
                             </label>
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
             clearError('blood_group');
         }
         
-        // Location validation
+                // Location validation
         const location = document.getElementById('location').value.trim();
         if (!location) {
             showError('location', 'Location is required');

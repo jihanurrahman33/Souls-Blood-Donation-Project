@@ -7,12 +7,8 @@ define("DB_PASS", "");
 
 // Application Configuration
 define("APP_NAME", "Souls");
-define("APP_URL", "http://localhost:8000/");
+define("APP_URL", "http://localhost/souls/");
 define("APP_VERSION", "2.0.0");
-
-// Security Configuration
-define("HASH_COST", 12); // Password hashing cost (higher = more secure but slower)
-define("CSRF_TOKEN_SECRET", "8649767eb79c5c8f3237a32ff20201cc99598bfcbee36c464e34e28883ff6b23");
 
 // Email Configuration (for notifications)
 define("SMTP_HOST", "smtp.gmail.com");
@@ -22,12 +18,20 @@ define("SMTP_PASSWORD", "your-app-password");
 define("SMTP_FROM_EMAIL", "noreply@blooddonation.com");
 define("SMTP_FROM_NAME", "Souls");
 
+// Security
+define("HASH_COST", 12); // Password hashing cost (higher = more secure but slower)
+define("CSRF_TOKEN_SECRET", "2997df705a6a17fccefce1f82120e709a8236220ae80ea66639ddda06c63b72f");
+
 // Error Reporting (set to 0 for production)
 error_reporting(E_ALL);
 ini_set("display_errors", 1);
 
-// Session Configuration - Disabled for now to prevent warnings
-// These settings can be configured in php.ini or .htaccess for production
+// Session Configuration (only set if session not already started)
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set("session.cookie_httponly", 1);
+    ini_set("session.use_only_cookies", 1);
+    ini_set("session.cookie_secure", 0); // Set to 1 for HTTPS
+}
 
 // Helper Functions
 function sanitize($input) {
@@ -71,3 +75,4 @@ function getFlashMessage($type) {
 function isAdmin() {
     return isset($_SESSION["user_role"]) && $_SESSION["user_role"] === "admin";
 }
+?>
